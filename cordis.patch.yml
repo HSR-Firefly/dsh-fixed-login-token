@@ -4,7 +4,7 @@
 # cordis.patch.yml and any --patch overlay still outrank it, so the token can
 # be changed per profile without editing this package:
 #
-#   # C:\Users\Firefly\.dsh\profiles\web\cordis.patch.yml
+#   # $DSH_HOME/profiles/<profile>/cordis.patch.yml
 #   - id: fixed-login-token
 #     config:
 #       token: 'your-own-fixed-token'
