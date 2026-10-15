@@ -13,9 +13,17 @@
  *
  * Pinning that single field therefore makes the printed URL deterministic and
  * keeps the exchange consistent, without reimplementing the cookie, its HMAC
- * signing, the expiry, or the 401 path. The upload is prototype-level so a
+ * signing, the expiry, or the 401 path. The wrap is prototype-level so a
  * Connection reload — which mints a fresh BrowserAuth from the same class and
  * would otherwise re-randomize the token — stays pinned as well.
+ *
+ * The token is declared `.volatile()`, which is what makes it editable from the
+ * Web UI: schemastery parses a volatile field into a stable reference whose
+ * `.get()` always returns the current value, and `@deepseek-ai/dsh-settings`
+ * builds its form from the volatile part of the Config schema. A write from the
+ * client half (`client.js`, the Plugins page's configuration page) updates that
+ * reference in place, persists through the active profile's Cordis patch, and
+ * takes effect on the next exchange without a restart.
  */
 import Schema from '@deepseek-ai/schemastery'
 
@@ -29,15 +37,35 @@ export const name = 'fixed-login-token'
 export const inject = ['connection']
 
 /** Fixed token used when the row config names none. */
-const DEFAULT_TOKEN = 'dsh-fixed-login-token'
+export const DEFAULT_TOKEN = 'dsh-fixed-login-token'
 
 /** Shortest accepted token: a fixed token is a standing credential. */
-const MIN_TOKEN_LENGTH = 8
+export const MIN_TOKEN_LENGTH = 8
 
-/** Row config: the fixed launch token, overridable from a later patch layer. */
+/**
+ * Row config. `token` is volatile so the settings-backed configuration form can
+ * edit it live: the parsed value is a reference read with `.get()`.
+ */
 export const Config = Schema.object({
-  token: Schema.string().default(DEFAULT_TOKEN),
+  token: Schema.string().min(MIN_TOKEN_LENGTH).default(DEFAULT_TOKEN).volatile(),
 })
+
+/**
+ * Read the live token from the volatile Config reference.
+ *
+ * A volatile field is updated in place by a settings write, so the reference
+ * captured at activation keeps returning the current value. The plain-value
+ * branch covers a composition that supplies the field without the reference
+ * wrapper.
+ * @param config - validated {@link Config}.
+ * @returns the token to pin, falling back to the default when the configured
+ * value is absent or too short.
+ */
+function readToken(config) {
+  const field = config?.token
+  const value = typeof field?.get === 'function' ? field.get() : field
+  return typeof value === 'string' && value.length >= MIN_TOKEN_LENGTH ? value : DEFAULT_TOKEN
+}
 
 /**
  * Pin this process's browser launch token.
@@ -45,10 +73,6 @@ export const Config = Schema.object({
  * @param config - validated {@link Config}.
  */
 export function apply(ctx, config) {
-  const token = config?.token ?? DEFAULT_TOKEN
-  if (typeof token !== 'string' || token.length < MIN_TOKEN_LENGTH) {
-    throw new Error(`fixed-login-token: config.token must be a string of at least ${String(MIN_TOKEN_LENGTH)} characters`)
-  }
   const auth = ctx.connection.browserAuth
   if (
     auth === undefined
@@ -62,12 +86,14 @@ export function apply(ctx, config) {
   const originalAuthenticatedUrl = prototype.authenticatedUrl
   const originalAuthorizeIndex = prototype.authorizeIndex
   ctx.effect(() => {
+    // Read the token at call time, never once at activation, so a settings
+    // write that lands later is honoured by both halves of the exchange.
     prototype.authenticatedUrl = function (baseUrl) {
-      this.launchToken = token
+      this.launchToken = readToken(config)
       return originalAuthenticatedUrl.call(this, baseUrl)
     }
     prototype.authorizeIndex = function (req, res) {
-      this.launchToken = token
+      this.launchToken = readToken(config)
       return originalAuthorizeIndex.call(this, req, res)
     }
     return () => {
@@ -77,5 +103,10 @@ export function apply(ctx, config) {
   }, 'fixed-login-token: pin the browser launch token')
   // Pin the instance that already exists too, so the startup URL line — printed
   // after the loader settles — already carries the fixed token.
-  auth.launchToken = token
+  auth.launchToken = readToken(config)
+  // This package ships its own configuration page (client.js) on the Plugins
+  // page, so the Settings service must not also generate a page from the schema.
+  ctx.inject(['settings'], (child) => {
+    child.effect(() => child.settings.configure({ auto: false }, ctx.fiber))
+  })
 }

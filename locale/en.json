@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Fixed login token",
+    "description": "Pin the Web GUI's launch token to a fixed value and edit it on this page."
+  }
+}

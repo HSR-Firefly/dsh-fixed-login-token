@@ -1,12 +1,27 @@
 {
   "name": "dsh-fixed-login-token",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
-  "description": "Pin the DSH Web GUI launch token so the printed and opened URL is stable across restarts.",
-  "exports": { ".": "./index.js" },
+  "description": "Pin the DSH Web GUI launch token and edit it from the Web UI's Plugins page.",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
   "main": "index.js",
-  "files": ["index.js", "cordis.patch.yml", "README.md"],
+  "files": ["index.js", "client.js", "cordis.patch.yml", "locale/*.json", "README.md"],
   "peerDependencies": { "@deepseek-ai/schemastery": "^3.18.4" },
-  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-plugin-manager"
+      ]
+    }
+  }
 }

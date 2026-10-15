@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "固定登录 token",
+    "description": "把 Web GUI 的启动登录 token 固定成固定值，并在本页直接修改。"
+  }
+}
