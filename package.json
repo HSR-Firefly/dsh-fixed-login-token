@@ -1,0 +1,12 @@
+{
+  "name": "dsh-fixed-login-token",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pin the DSH Web GUI launch token so the printed and opened URL is stable across restarts.",
+  "exports": { ".": "./index.js" },
+  "main": "index.js",
+  "files": ["index.js", "cordis.patch.yml", "README.md"],
+  "peerDependencies": { "@deepseek-ai/schemastery": "^3.18.4" },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}

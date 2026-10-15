@@ -1,0 +1,15 @@
+# Bundle patch for dsh-fixed-login-token.
+#
+# Inserts one Host row after the bundle layers; the profile's own
+# cordis.patch.yml and any --patch overlay still outrank it, so the token can
+# be changed per profile without editing this package:
+#
+#   # C:\Users\Firefly\.dsh\profiles\web\cordis.patch.yml
+#   - id: fixed-login-token
+#     config:
+#       token: 'your-own-fixed-token'
+- insert:
+    - id: fixed-login-token
+      name: dsh-fixed-login-token
+      config:
+        token: dsh-fixed-login-token
